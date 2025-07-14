@@ -34,6 +34,7 @@ public class SimpleGameManager : MonoBehaviour
     public PlaySelectionUI playSelectionUI;
     public bool playSelectionShown = false;
     public bool playSelected = false;
+    public PlayData currentSelectedPlay = null;
     
     // Switch cooldown system
     private float lastGlobalSwitchTime = -1f;
@@ -167,12 +168,37 @@ public class SimpleGameManager : MonoBehaviour
     
     public PlayData GetCurrentPlay()
     {
-        // Get the current play from the PlaySelectionUI
-        if (playSelectionUI != null)
+        Debug.Log($"=== GetCurrentPlay called ===");
+        Debug.Log($"currentSelectedPlay is null: {currentSelectedPlay == null}");
+        Debug.Log($"playSelected: {playSelected}");
+        
+        // Return the stored selected play
+        if (currentSelectedPlay != null)
         {
-            return playSelectionUI.GetSelectedPlay();
+            Debug.Log($"Returning stored selected play: {currentSelectedPlay.playName}");
+            Debug.Log($"=== GetCurrentPlay complete (stored) ===");
+            return currentSelectedPlay;
         }
         
+        // Fallback to asking PlaySelectionUI
+        if (playSelectionUI != null)
+        {
+            PlayData fallbackPlay = playSelectionUI.GetSelectedPlay();
+            Debug.Log($"Fallback play from UI: {(fallbackPlay != null ? fallbackPlay.playName : "null")}");
+            if (fallbackPlay != null)
+            {
+                Debug.Log($"Returning fallback play from UI: {fallbackPlay.playName}");
+                Debug.Log($"=== GetCurrentPlay complete (fallback) ===");
+                return fallbackPlay;
+            }
+        }
+        else
+        {
+            Debug.Log("playSelectionUI is null - cannot get fallback play");
+        }
+        
+        Debug.Log("No play selected, returning null");
+        Debug.Log($"=== GetCurrentPlay complete (null) ===");
         return null;
     }
     
@@ -230,9 +256,14 @@ public class SimpleGameManager : MonoBehaviour
     
     void HandlePrePlayInput()
     {
+        Debug.Log("=== HandlePrePlayInput called ===");
+        Debug.Log($"playSelectionShown: {playSelectionShown}");
+        Debug.Log($"playSelected: {playSelected}");
+        
         // If play selection UI hasn't been shown yet, show it automatically
         if (!playSelectionShown)
         {
+            Debug.Log("Play selection UI not shown yet - showing it");
             ShowPlaySelection();
             return;
         }
@@ -247,8 +278,11 @@ public class SimpleGameManager : MonoBehaviour
         // If play is selected, snap the ball
         if (playSelected)
         {
+            Debug.Log("Play selected - snapping ball");
             SnapBall();
         }
+        
+        Debug.Log("=== HandlePrePlayInput complete ===");
     }
     
     System.Collections.IEnumerator ShowPlaySelectionAtStart()
@@ -271,31 +305,83 @@ public class SimpleGameManager : MonoBehaviour
             return;
         }
         
-        Debug.Log("Showing play selection UI");
+        Debug.Log("=== ShowPlaySelection called ===");
+        Debug.Log($"playSelected before: {playSelected}");
+        Debug.Log($"currentSelectedPlay before: {(currentSelectedPlay != null ? currentSelectedPlay.playName : "null")}");
+        
+        // Only reset play selection state if no play has been selected yet
+        if (!playSelected)
+        {
+            Debug.Log("Resetting currentSelectedPlay to null because no play selected yet");
+            currentSelectedPlay = null;
+        }
+        else
+        {
+            Debug.Log("NOT resetting currentSelectedPlay because play already selected");
+        }
+        
         playSelectionUI.ShowPlaySelection();
         playSelectionShown = true;
         
         // Subscribe to play selection event if not already subscribed
+        Debug.Log("Unsubscribing from OnPlaySelected event");
         playSelectionUI.OnPlaySelected -= OnPlaySelected;
+        Debug.Log("Subscribing to OnPlaySelected event");
         playSelectionUI.OnPlaySelected += OnPlaySelected;
+        Debug.Log("Event subscription complete");
+        
+        Debug.Log("=== ShowPlaySelection complete ===");
     }
     
     void OnPlaySelected(PlayData play)
     {
+        Debug.Log($"=== OnPlaySelected called ===");
         Debug.Log($"Play selected in GameManager: {play.playName}");
+        Debug.Log($"Play type: {play.playType}");
+        Debug.Log($"Formation: {play.formation.formationName}");
+        
+        currentSelectedPlay = play;
         playSelected = true;
         
-        // Now Tab input will snap the ball
+        Debug.Log($"currentSelectedPlay set to: {currentSelectedPlay.playName}");
+        Debug.Log($"playSelected set to: {playSelected}");
         Debug.Log("Play selected - Tab will now snap the ball");
+        Debug.Log($"=== OnPlaySelected complete ===");
+    }
+    
+    [ContextMenu("Test OnPlaySelected")]
+    public void TestOnPlaySelected()
+    {
+        Debug.Log("Testing OnPlaySelected method...");
+        if (playSelectionUI != null)
+        {
+            PlayData testPlay = PlayBook.GetMeshPlay();
+            OnPlaySelected(testPlay);
+        }
+    }
+    
+    [ContextMenu("Test Event Subscription")]
+    public void TestEventSubscription()
+    {
+        Debug.Log("Testing event subscription...");
+        if (playSelectionUI != null)
+        {
+            PlayData testPlay = PlayBook.GetMeshPlay();
+            Debug.Log("Manually triggering OnPlaySelected event...");
+            playSelectionUI.OnPlaySelected?.Invoke(testPlay);
+        }
     }
     
     void SnapBall()
     {
         if (footballBall == null) return;
         
+        Debug.Log("=== SnapBall called ===");
+        Debug.Log($"currentSelectedPlay: {(currentSelectedPlay != null ? currentSelectedPlay.playName : "null")}");
         Debug.Log("Snapping ball...");
         footballBall.SnapBall();
         lastGlobalSwitchTime = Time.time;
+        Debug.Log("=== SnapBall complete ===");
     }
     
     void OnBallCarrierChanged(SimplePlayerController newCarrier)
